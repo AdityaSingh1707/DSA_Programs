@@ -1,4 +1,4 @@
-// Display n number of natural number in Reverse Order. (Using Recursion)
+// Display n number of natural number in Ascending Order. (Using Recursion)
 
 #include<stdio.h>
 void func(int n)
