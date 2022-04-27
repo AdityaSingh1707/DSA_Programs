@@ -1,3 +1,4 @@
+// Display n number of natural numbers in descending order. (Using Recursion)
 #include<stdio.h>
 void func(int n)
 {
