@@ -1,44 +1,44 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-typedef struct Track
-{
-    char name[15];
-}Track;
 typedef struct st
 {
     struct st *next, *prev;
     char *name;
-}Node;
-int storeData(FILE *music, Track *details);
-void storeinLinkedList(Node **Head, Track *details, int no_of_tracks);
-Node *createNode(char name[]);
+} Node;
+
+Node *createNode(char *name);
+void append(Node **Head, char *Track);
 void traverse(Node *Head);
-Node *searchbydata(Node *Head, char *data);
 Node *searchbypos(Node *Head, int pos);
+Node *searchbydata(Node *Head, char *data);
 Node *play(Node *Head, int pos);
-void addafter(Node *Head, char *newTracks);
+void addafter(Node *ptr, char *newTracks);
 void addbeg(Node **Head, char *newTracks);
+void delnode(Node **Head, char *key);
+void sort(Node **Head);
 void updateFile(FILE *music, Node *Head);
+void insertSorted(Node **Head, Node *tmp);
 
 int main()
 {
     Node *Head = NULL, *Currentplayed, *curr;
     FILE *Fmusic = fopen("Music.txt", "r");
-    Track details[10];
-    int no_of_tracks = storeData(Fmusic, details);
     char ch, dump, Track[15], newData[15];
     int i, trackNo, posi;
-    storeinLinkedList(&Head, details, no_of_tracks);
+    while (fgets(Track, sizeof(Track), Fmusic) != NULL)
+    {
+        append(&Head, Track);
+    }
     traverse(Head);
-    printf("\n");
     curr = Head;
     do
     {
         printf("\nPress S : Start the Player.\n");
         printf("Press J : Jump to a Specific track.\n");
         printf("Press N : Play Next Track.\n");
+        printf("Press P : Play Previous Track.\n");
         printf("Press F : Play First Track.\n");
         printf("Press L : Play Last Track.\n");
         printf("Press A : Add a track after an existing track.\n");
@@ -46,8 +46,7 @@ int main()
         printf("Press R : Remove a specific track from the list.\n");
         printf("Press O : Sort the tracks in alphabetical order.\n");
         printf("Press T : Stop The Player.\n");
-        printf("Press C : Change all tracks posi.\n");
-        printf("Press D : Display all tracks, Add a *besides the current tracks.\n");
+        printf("Press D : Display all tracks.\n");
         printf("Enter Your Choice : \n");
         scanf("%c%c", &ch, &dump);
         switch (ch)
@@ -55,6 +54,8 @@ int main()
         case 'S':
             printf("\n\nMusic Player Starts...\nPlaying First Track :- ");
             Currentplayed = play(Head, 1);
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
             fprintf(stdout, "%s", Currentplayed->name);
             printf("\n\n");
             break;
@@ -62,6 +63,8 @@ int main()
             printf("\nEnter the name of the track to be played :\n");
             fgets(Track, 15, stdin);
             Currentplayed = searchbydata(Head, Track);
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
             printf("\n\nNow Playing... :- ");
             fprintf(stdout, "%s", Currentplayed->name);
             printf("\n\n");
@@ -69,18 +72,31 @@ int main()
         case 'N':
             printf("\n\nNow Playing... :- ");
             Currentplayed = Currentplayed->next;
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
             fprintf(stdout, "%s", Currentplayed->name);
             printf("\n\n");
             break;
+        case 'P':
+            printf("\n\nNow Playing... :- ");
+            Currentplayed = Currentplayed->prev;
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
+            fprintf(stdout, "%s", Currentplayed->name);
+            printf("\n\n");
         case 'F':
             printf("\n\nNow Playing... :- ");
             Currentplayed = play(Head, 1);
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
             fprintf(stdout, "%s", Currentplayed->name);
             printf("\n\n");
             break;
         case 'L':
             printf("\n\nNow Playing... :- ");
             Currentplayed = play(Head, -1);
+            if (Currentplayed == NULL)
+                printf("The playlist is empty.\n");
             fprintf(stdout, "%s", Currentplayed->name);
             printf("\n\n");
             break;
@@ -90,69 +106,104 @@ int main()
             printf("Enter new Track name : \n");
             fgets(newData, 15, stdin);
             curr = searchbydata(Head, Track);
+            if (curr == NULL)
+            {
+                printf("The given track is not present in the playlist.\n");
+                break;
+            }
             addafter(curr, newData);
             traverse(Head);
             updateFile(Fmusic, Head);
             printf("\nSuccesfully Added.\n");
             break;
         case 'B':
+            if (Head == NULL)
+            {
+                printf("The playlist is empty.\n");
+                break;
+            }
             printf("\nEnter the name of the track before which new track is to added : \n");
             fgets(Track, 15, stdin);
             printf("Enter new Track name : \n");
             fgets(newData, 15, stdin);
             curr = searchbydata(Head, Track);
-            if(curr == Head) 
-                addbeg(Head, newData);
+            if (curr == NULL)
+                printf("No such Track is present in the playlist.\n");
+            if (curr == Head)
+                addbeg(&Head, newData);
             else
                 addafter(curr->prev, newData);
             traverse(Head);
             updateFile(Fmusic, Head);
             printf("\nSuccesfully Added.\n");
             break;
+        case 'R':
+            if (Head == NULL)
+            {
+                printf("The playlist is empty.\n");
+                break;
+            }
+            printf("\nEnter the name of the track after which is needed to be removed : \n");
+            fgets(Track, 15, stdin);
+            delnode(&Head, Track);
+            traverse(Head);
+            updateFile(Fmusic, Head);
+            break;
+        case 'O':
+            if (Head == NULL)
+            {
+                printf("The playlist is empty.\n");
+                break;
+            }
+            sort(&Head);
+            printf("\nSorted List :\n");
+            traverse(Head);
+            printf("\n");
+            updateFile(Fmusic, Head);
+            break;
+        case 'D':
+            if (Head == NULL)
+            {
+                printf("The playlist is empty.\n");
+                break;
+            }
+            printf("\n\nAll Tracks are displayed below :- \n");
+            traverse(Head);
+            printf("\n");
+            break;
         case 'T':
             printf("Music Player Closed.\n");
             break;
         default:
-            printf("Invalid Choice... Enter your choice again : \n");
+            printf("Invalid Choice... Try Again...\n");
             break;
         }
-    }while(ch != 'T');
+    } while (ch != 'T');
     fclose(Fmusic);
     return 0;
 }
-int storeData(FILE *music, Track *details)
-{
-    int count=0;
-    while((fgets(details[count].name, 15, music) != NULL))
-    {
-        count++;
-    }
-    return count;
-}
+
 Node *createNode(char *name)
 {
-    Node *tmp = (Node*)malloc(sizeof(Node));
+    Node *tmp = (Node *)malloc(sizeof(Node));
     tmp->name = strdup(name);
     tmp->next = tmp->prev = NULL;
     return tmp;
 }
-
-void storeinLinkedList(Node **Head, Track *details, int no_of_tracks)
+void append(Node **Head, char *Track)
 {
-    int i=0;
-    Node *newNode = createNode(details[0].name);
-    if(*Head == NULL)
+    Node *newNode = createNode(Track);
+    if (*Head == NULL)
     {
         newNode->next = newNode->prev = newNode;
         *Head = newNode;
+        return;
     }
-    for(i=1; i<no_of_tracks; i++)
-    {
-        newNode = createNode(details[i].name);
-        newNode->next = (*Head);
-        newNode->prev = (*Head)->prev;
-        (*Head)->prev = (*Head)->prev->next = newNode;
-    }
+    Node *last = (*Head)->prev;
+    newNode->prev = last;
+    newNode->next = *Head;
+    last->next = newNode;
+    (*Head)->prev = newNode;
 }
 void traverse(Node *Head)
 {
@@ -161,37 +212,38 @@ void traverse(Node *Head)
     {
         fprintf(stdout, "%s", curr->name);
         curr = curr->next;
-    }
-    while (curr != Head);
-    
+    } while (curr != Head);
+    printf("\n");
 }
 Node *searchbypos(Node *Head, int pos)
 {
     Node *tmp = Head;
     int count = 1;
-    while(tmp != NULL)
+    do
     {
-        if(count == pos)
+        if (count == pos)
             return tmp;
         ++count;
         tmp = tmp->next;
-    }
+    } while (tmp != Head);
+    return NULL;
 }
 Node *searchbydata(Node *Head, char *data)
 {
     Node *curr = Head;
     do
     {
-        if(strcmp(data, curr->name) == 0)
+        if (strcmp(data, curr->name) == 0)
             return curr;
         curr = curr->next;
-    }while(curr != Head);
+    } while (curr != Head);
+    return NULL;
 }
 
 Node *play(Node *Head, int pos)
 {
     Node *tmp = Head;
-    if(pos == -1)
+    if (pos == -1)
         return tmp->prev;
     else
         return searchbypos(tmp, pos);
@@ -218,7 +270,7 @@ void updateFile(FILE *music, Node *Head)
 void addbeg(Node **Head, char *newTracks)
 {
     Node *newNode = createNode(newTracks);
-    if(*Head == NULL)
+    if (*Head == NULL)
     {
         newNode->next = newNode->prev = newNode;
         *Head = newNode;
@@ -230,4 +282,83 @@ void addbeg(Node **Head, char *newTracks)
     last->next = newNode;
     (*Head)->prev = newNode;
     *Head = newNode;
+}
+void delnode(Node **Head, char *key)
+{
+    if (*Head == NULL)
+        return;
+    Node *curr = *Head, *prev = NULL;
+    while (strcmp(curr->name, key) != 0)
+    {
+        if (curr->next == *Head)
+        {
+            printf("List doesn't have node with value = %s\n", key);
+            return;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+    if (curr->next == *Head && prev == NULL)
+    {
+        (*Head) = NULL;
+        free(curr);
+        return;
+    }
+    if (curr == *Head)
+    {
+        prev = (*Head)->prev;
+        (*Head) = (*Head)->next;
+        prev->next = *Head;
+        (*Head)->prev = prev;
+        free(curr);
+    }
+    else if (curr->next == *Head)
+    {
+
+        prev->next = *Head;
+        (*Head)->prev = prev;
+        free(curr);
+    }
+    else
+    {
+        Node *temp = curr->next;
+        prev->next = temp;
+        temp->prev = prev;
+        free(curr);
+    }
+}
+void sort(Node **Head)
+{
+    Node *Head2 = NULL, *curr = *Head, *tmp;
+    do
+    {
+        tmp = curr->next;
+        insertSorted(&Head2, createNode(curr->name));
+        free(curr);
+        curr = tmp;
+    } while (curr != *Head);
+    *Head = Head2;
+}
+void insertSorted(Node **Head, Node *tmp)
+{
+    if (*Head == NULL)
+    {
+        tmp->next = tmp->prev = tmp;
+        *Head = tmp;
+        return;
+    }
+    else if (strcmp((*Head)->name, tmp->name) > 0)
+    {
+        addbeg(Head, tmp->name);
+        return;
+    }
+    Node *curr = (*Head);
+    while (curr->next != *Head && strcmp(curr->next->name, tmp->name) < 0)
+    {
+        curr = curr->next;
+    }
+    tmp->next = curr->next;
+    tmp->prev = curr;
+    curr->next->prev = tmp;
+    curr->next = tmp;
 }
